@@ -1,0 +1,157 @@
+﻿Program.Sub.Preflight.Start
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+'Author: Daniel Duncan
+'Customer: TE Connectivity
+'Program Name: Update PO from NCMR
+'Date Started: 1/4/2021
+'Description: When NCMR is processed, this script updates the PO line user field 5 with the NCMR number.
+'Quote: 12571
+'GAP: 6199
+
+'Edited By: Brandon Medina
+'Customer: Haskris
+'Date: 4/14/2021
+'Description: Before NCMR is created, will write info to temp file, look up newly created NCMR, and launch standard Quality Reject/Disposition Form with temp file info. From here they can modify quantity and/or print reports 
+'Quote: 12785-0
+'GAP: 6314
+v.Local.sSQL.Declare
+v.Local.sNCMR.Declare
+v.Local.sPO.Declare
+v.Local.sPOLine.Declare
+V.Local.sCustNCMR.Declare
+V.Local.sPart.Declare
+V.Local.sFile.Declare
+V.Local.sFileContent.Declare
+V.Local.bTempExists.Declare(Boolean, False)
+V.Local.iCount.Declare
+V.Local.sError.Declare
+V.Local.sParams.Declare
+V.Local.sFullUserName.Declare
+
+V.Global.bConOpen.Declare(Boolean, False)
+V.Global.iHook.Declare
+'Function.Intrinsic.UI.UsePixels ' Allows you to use Pixels instead of Twips throughout
+
+f.Intrinsic.Control.Try
+	'Hook #: 28903
+	'Passed vars:
+	'	NCMR #: 	000002
+	'	PO:			000026
+	'	PO Line:	000015
+	'If the NCMR has a PO number and line atatched, when the NCMR saves, update UF5 on the PO line.
+	
+	f.Intrinsic.Control.If(v.Caller.Hook,=,28903)
+		V.Global.iHook.Set(28903)
+		'Set the vars and format them
+		f.Intrinsic.String.LPad(v.Passed.000002,"0",7,v.local.sNCMR)
+		f.Intrinsic.String.LPad(v.Passed.000026,"0",7,v.local.sPO)
+		f.Intrinsic.String.LPad(v.Passed.000015,"0",3,v.local.sPOLine)
+		
+		f.Intrinsic.String.Build("update po_lines set user_5='{0}' where purchase_order='{1}' and record_no='{2}0';",v.Local.sNCMR,v.Local.sPO,v.Local.sPOLine,v.Local.sSQL)
+		f.ODBC.Connection!con.opencompanyconnection
+		V.Global.bConOpen.Set(True)
+			f.ODBC.Connection!con.Execute(v.Local.sSQL)
+		f.ODBC.Connection!con.close
+		V.Global.bConOpen.Set(False)
+	F.Intrinsic.Control.ElseIf(V.Caller.Hook, =, 14762)
+		V.Global.iHook.Set(14762)
+		'INVS220N Pre Create Hook: Writing 
+		'Customer NCMR: 000003,Part: 000010 + rev: 000039, PO Num: 000001, PO line: 000002 to temp file 
+		V.Local.sCustNCMR.Set(V.Passed.000003)
+		F.Intrinsic.String.GSSPartString(V.Passed.000010, V.Passed.000039, V.Local.sPart)
+		F.Intrinsic.String.LPad(V.Passed.000001, "0", 7, V.Local.sPO)
+		F.Intrinsic.String.LPad(V.Passed.000002, "0", 3, V.Local.sPOLine)
+		F.Intrinsic.String.RPad(V.Local.sPOLine, "0", 4, V.Local.sPOLine)
+		
+		F.Intrinsic.String.Build("select if(LAST_NAME <> '', FIRST_NAME + ' ' + LAST_NAME, FIRST_NAME) from USER_INFORMATION where GS_USER = '{0}'", V.Caller.User, V.Local.sSQL)
+		F.ODBC.Connection!con.OpenCommonConnection
+		V.Global.bConOpen.Set(True)
+		F.ODBC.Connection!con.ExecuteAndReturn(V.Local.sSQL, V.Local.sFullUserName)
+		F.ODBC.Connection!con.Close
+		V.Global.bConOpen.Set(False)
+		
+		F.Intrinsic.String.Build("{0}*!*{1}*!*{2}*!*{3}*!*{4}", V.Local.sCustNCMR, V.Local.sPart, V.Local.sPO, V.Local.sPOLine, V.Local.sFullUserName, V.Local.sFileContent)
+		
+		F.Intrinsic.String.Build("{0}\{1}GCG_6314_Temp.txt", V.Caller.FilesDir, V.Caller.User, V.Local.sFile)
+		F.Intrinsic.File.String2File(V.Local.sFile, V.Local.sFileContent)
+	F.Intrinsic.Control.ElseIf(V.Caller.Hook, =, 14763)
+		V.Global.iHook.Set(14763)
+		'INVS220N Post Create Hook
+		'From temp file, Look up new NCMR num using user, Cust NCMR, PO, PO Line 
+		'File delimited by *!* in this order: CustNCMR, Part, PO, POLine, User's Full name 
+		F.Intrinsic.String.Build("{0}\{1}GCG_6314_Temp.txt", V.Caller.FilesDir, V.Caller.User, V.Local.sFile)
+		F.Intrinsic.File.Exists(V.Local.sFile, V.Local.bTempExists)
+		F.Intrinsic.Control.If(V.Local.bTempExists)
+			F.Intrinsic.File.File2String(V.Local.sFile, V.Local.sFileContent)
+			F.Intrinsic.String.Split(V.Local.sFileContent, "*!*", V.Local.sFileContent)
+			
+			V.Local.sCustNCMR.Set(V.Local.sFileContent(0))
+			V.Local.sPart.Set(V.Local.sFileContent(1))
+			V.Local.sPO.Set(V.Local.sFileContent(2))
+			V.Local.sPOLine.Set(V.Local.sFileContent(3))
+			V.Local.sFullUserName.Set(V.Local.sFileContent(4))
+			
+			'F.Intrinsic.String.Build("select count(CONTROL_NUMBER) from V_QUALITY where USER1 = '{0}' and PURCHASE_ORDER = '{1}' and PO_LINE = '{2}' and EMPLOYEE_NAME = '{3}'", V.Local.sCustNCMR, V.Local.sPO, V.Local.sPOLine, V.Caller.User, V.Local.sSQL)
+			'F.Intrinsic.String.Build("select count(CONTROL_NUMBER) from V_QUALITY where USER1 = '{0}' and PURCHASE_ORDER = '{1}' and PO_LINE = '{2}' and EMPLOYEE_NAME = '{3}' and PART = '{4}'", V.Local.sCustNCMR, V.Local.sPO, V.Local.sPOLine, V.Caller.User, V.Local.sPart, V.Local.sSQL)
+			F.Intrinsic.String.Build("select max(CONTROL_NUMBER) from V_QUALITY where USER1 = '{0}' and PURCHASE_ORDER = '{1}' and PO_LINE = '{2}' and EMPLOYEE_NAME = '{3}' and PART = '{4}'", V.Local.sCustNCMR, V.Local.sPO, V.Local.sPOLine, V.Local.sFullUserName, V.Local.sPart.PSQLFriendly, V.Local.sSQL)
+			F.ODBC.Connection!con.OpenCompanyConnection
+			V.Global.bConOpen.Set(True)
+			F.ODBC.Connection!con.ExecuteAndReturn(V.Local.sSQL, V.Local.sNCMR)
+			
+			F.Intrinsic.File.DeleteFile(V.Local.sFile)
+			F.ODBC.Connection!con.Close
+			V.Global.bConOpen.Set(False)
+		F.Intrinsic.Control.Else
+			F.Intrinsic.String.Build("Either an ambiguous file name was passed, or no NCMR temp file was created{0}No NCMR number copied to clipboard", V.Ambient.NewLine, V.Local.sError)
+			F.Intrinsic.UI.Msgbox(V.Local.sError, "No Value Copied Error")
+			V.Local.sNCMR.Set("")
+			F.Intrinsic.Control.End
+		F.Intrinsic.Control.EndIf
+		'Copy to User's Clipboard
+		'F.Intrinsic.UI.SetClipboardText(V.Local.sNCMR)
+		'Launch PUR1RT 
+		'F.Global.General.CallWrapperAsync(50, "PUR1RT")
+		'Instead, customer wants to open standard Quality Reject/Disposition Form with newly created NCMR info populated 
+		F.Intrinsic.Control.If(V.Local.sNCMR, =, "")
+			V.Local.sError.Set("No quality record was found in database tables based on selection criteria")
+			F.Intrinsic.UI.Msgbox(V.Local.sError, "No Record Found Error")
+			F.Intrinsic.Control.End
+		F.Intrinsic.Control.EndIf
+		
+		F.Intrinsic.Control.If(V.Caller.GSSVersion, =, "2020.1")
+			F.Global.Callwrapper.New("QualityReject", "Quality.OpenRejectDispositionControl")
+			F.Global.Callwrapper.SetProperty("QualityReject", "QualityNumber", V.Local.sNCMR)
+			F.Global.Callwrapper.Run("QualityReject")
+		F.Intrinsic.Control.Else
+			F.Intrinsic.String.ConcatCallWrapperArgs(V.Caller.CompanyCode, V.Local.sNCMR, V.Local.sParams)
+			F.Global.General.CallWrapperAsync(2001, V.Local.sParams)
+		F.Intrinsic.Control.EndIf
+		
+	f.Intrinsic.Control.EndIf
+f.Intrinsic.Control.Catch
+	f.Intrinsic.Control.CallSub(ErrorMsg, CurrentSub, v.Ambient.CurrentSubroutine)
+f.Intrinsic.Control.EndTry
+Program.Sub.Main.End
+
+Program.Sub.ErrorMsg.Start
+v.Local.sError.Declare
+
+'Closes ODBC connection, default to connection : "con"
+'f.Intrinsic.Control.If(v.ODBC!con.State, =, 1)
+'	f.ODBC.Connection!con.Close
+'f.Intrinsic.Control.EndIf
+F.Intrinsic.Control.If(V.Global.bConOpen)
+	F.ODBC.Connection!con.Close
+F.Intrinsic.Control.EndIf
+
+'Generic Error message.
+f.Intrinsic.String.Build("Project GCG_6199_UpdatePOFromNCMR.g2u {0}{0}Subroutine: {1}{0}Error: {2} with Description: {3}", v.Ambient.NewLine, v.Args.CurrentSub, v.Ambient.ErrorNumber, v.Ambient.ErrorDescription, v.Local.sError)
+f.Intrinsic.UI.Msgbox(v.Local.sError)
+Program.Sub.ErrorMsg.End
+
+Program.Sub.Comments.Start
+${$5$}$3.0.0.0$}$1
+${$6$}$bmedina$}$20210513115547920$}$kOipCrsyLBVj2KoSwkcdK23ChxGVcBlET6e8GFTSl7/VeMFidNK6ixEQfAT8qzlpxw+NYDfGb2c=
+Program.Sub.Comments.End
