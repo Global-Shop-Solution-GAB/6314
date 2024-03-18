@@ -1,0 +1,822 @@
+﻿Program.Sub.ScreenSU.Start
+Gui.Form..Create(BaseForm)
+Gui.Form..Caption("NCMR")
+Gui.Form..Size(17655,10485)
+Gui.Form..MinX(0)
+Gui.Form..MinY(0)
+Gui.Form..Position(0,0)
+Gui.Form..BackColor(-2147483633)
+Gui.Form..MousePointer(0)
+Gui.Form..Event(UnLoad,Form_UnLoad)
+Gui.Form..AlwaysOnTop(False)
+Gui.Form..FontName("Tahoma")
+Gui.Form..FontSize(8.25)
+Gui.Form..ControlBox(True)
+Gui.Form..MaxButton(True)
+Gui.Form..MinButton(True)
+Gui.Form..Moveable(True)
+Gui.Form..Sizeable(True)
+Gui.Form..ShowInTaskBar(True)
+Gui.Form..TitleBar(True)
+Gui.Form.gsQual.Create(GsGridControl)
+Gui.Form.gsQual.Size(17385,8640)
+Gui.Form.gsQual.Position(30,1290)
+Gui.Form.gsQual.Event(RowCellClick,Hyperlinks)
+Gui.Form.gsQual.Event(CellValueChanged,gsQual_CellValueChanged)
+Gui.Form.gsQual.Enabled(True)
+Gui.Form.gsQual.Visible(True)
+Gui.Form.gsQual.Zorder(0)
+Gui.Form.picGSSLOGO.Create(PictureBox)
+Gui.Form.picGSSLOGO.Size(6240,1230)
+Gui.Form.picGSSLOGO.Position(5580,15)
+Gui.Form.picGSSLOGO.Enabled(True)
+Gui.Form.picGSSLOGO.Visible(True)
+Gui.Form.picGSSLOGO.Zorder(0)
+Gui.Form.cmdRefresh.Create(Button)
+Gui.Form.cmdRefresh.Size(1035,375)
+Gui.Form.cmdRefresh.Position(135,390)
+Gui.Form.cmdRefresh.Caption("Refresh")
+Gui.Form.cmdRefresh.Event(Click,cmdRefresh_Click)
+Gui.Form.cmdRefresh.Enabled(True)
+Gui.Form.cmdRefresh.Visible(True)
+Gui.Form.cmdRefresh.Zorder(0)
+Gui.Form.cmdRefresh.FontName("Tahoma")
+Gui.Form.cmdRefresh.FontSize(8.25)
+Gui.Form.Export.Create(Button)
+Gui.Form.Export.Size(855,375)
+Gui.Form.Export.Position(1320,390)
+Gui.Form.Export.Caption("Export")
+Gui.Form.Export.Event(Click,Export)
+Gui.Form.Export.Enabled(True)
+Gui.Form.Export.Visible(True)
+Gui.Form.Export.Zorder(0)
+Gui.Form.Export.FontName("Tahoma")
+Gui.Form.Export.FontSize(8.25)
+Gui.Form.proBar.Create(ProgressBar)
+Gui.Form.proBar.Visible(False)
+Gui.Form.proBar.Size(2955,105)
+Gui.Form.proBar.Position(2370,495)
+Gui.ProgressForm..Create(BaseForm)
+Gui.ProgressForm..Caption("Progress")
+Gui.ProgressForm..Size(15360,1155)
+Gui.ProgressForm..MinX(0)
+Gui.ProgressForm..MinY(0)
+Gui.ProgressForm..Position(0,0)
+Gui.ProgressForm..BackColor(-2147483633)
+Gui.ProgressForm..MousePointer(0)
+Gui.ProgressForm..Event(UnLoad,ProgressForm_UnLoad)
+Gui.ProgressForm..AlwaysOnTop(False)
+Gui.ProgressForm..FontName("Tahoma")
+Gui.ProgressForm..FontSize(8.25)
+Gui.ProgressForm..ControlBox(True)
+Gui.ProgressForm..MaxButton(True)
+Gui.ProgressForm..MinButton(True)
+Gui.ProgressForm..Moveable(True)
+Gui.ProgressForm..Sizeable(True)
+Gui.ProgressForm..ShowInTaskBar(True)
+Gui.ProgressForm..TitleBar(True)
+Gui.ProgressForm.proBar.Create(ProgressBar)
+Gui.ProgressForm.proBar.Size(14535,105)
+Gui.ProgressForm.proBar.Position(315,255)
+Gui.ProgressForm.proBar.Visible(True)
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+V.Global.Return.Declare(string)
+'BM Adding to replace broken connection state check function 
+V.Global.bConOpen.Declare(Boolean, False)
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+'DR.H 	6/8/2018		GCG_5124_QA_Dashboard.g2c	'Caragh Precision
+'Quality Dashboard displays quality records and allows the information needed for dispositioning them to be entered in the grid. 
+'Process disposition button using a callwrapper to call the Reject Disposition program passing in the needed information to complete the disposition.
+
+'BN, modified to be project 5437
+'Add summary for numeric fields
+'Add feature when opening the dashboard, the program will add Dispose Records for those NCMR not having any Disposed Records.
+
+'BM, 4/13/2021modify project 6199 
+'Add Inspect by and Inspect Date columns 
+'Add Customer NCMR column (Editable)
+'Print Return Form report from Create Quality Record from Inventory Screen 
+
+F.Intrinsic.Control.Try
+	V.Local.sError.Declare
+	V.Local..BulkDeclareString(sIcon,sGssLogo)
+	
+	Function.ODBC.Connection!con.OpenCompanyConnection
+	V.Global.bConOpen.Set(True)
+	
+	'****Create this section of codes for the grid to be clearRow in Load sub. This will make the program Format the grid faster******
+'	f.Data.DataTable.Create("NCMR")
+'	gui.Form.gsQual.AddGridViewFromDataTable("GVMain","NCMR")
+'	gui.Form.gsQual.MainView("GVMain")
+	'*********************************************************************************************************************************
+		
+	F.Intrinsic.String.Build("{0}\GAB\GAS\gss2.ico",V.Caller.PluginsDir,v.Local.sIcon)
+	F.Intrinsic.String.Build("{0}\GAB\GAS\GAB_GSS_Logo_Green_Dash.png",V.Caller.PluginsDir,V.Local.sGssLogo)
+	Gui.Form..Icon(V.Local.sIcon)
+	Gui.Form.picGSSLogo.Picture(V.Local.sGssLogo)	
+	
+	'There will be two mode for the dashboard edit/view.  Those with edit rights will need to be part of user group NCMR
+	'check directory
+	F.Intrinsic.Control.CallSub("CHK_DIR")
+	'anchor form
+	gui.Form.gsQual.Anchor(15)
+	Gui.Form.picGSSLogo.Anchor(1)
+	'grid data	
+	gui.ProgressForm..Show
+	F.Intrinsic.Control.CallSub("Load")	
+	f.Intrinsic.Control.CallSub("Deserialize")
+	gui.Form..Show
+	gui.ProgressForm..Visible(False)
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}GAB Version: {5}}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	f.Intrinsic.Control.CallSub("Unload")
+F.Intrinsic.Control.EndTry
+Program.Sub.Main.End
+
+Program.Sub.cmdRefresh_Click.Start
+	f.Intrinsic.Control.CallSub("Serialize")
+	F.Intrinsic.Control.CallSub("Load")
+	f.Intrinsic.Control.CallSub("Deserialize")
+Program.Sub.cmdRefresh_Click.End
+
+Program.Sub.CHK_DIR.Start
+F.Intrinsic.Control.Try
+	V.Local.sError.Declare	
+	V.Local.bExists.Declare
+	V.Local.sFQP.Declare
+	
+	'check for directory
+	F.Intrinsic.String.Build("{0}\Custom\5124\", V.Caller.BusintDir, V.Local.sFQP)
+	Function.Intrinsic.File.DirExists(V.Local.sFQP, V.Local.bExists)
+	
+	F.Intrinsic.Control.If(V.Local.bExists)
+		F.Intrinsic.Control.ExitSub
+	F.Intrinsic.Control.EndIf	
+	Function.Intrinsic.File.CreateDir(V.Local.sFQP)
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}GAB Version: {5}}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	f.Intrinsic.Control.CallSub("Unload")
+F.Intrinsic.Control.EndTry
+Program.Sub.CHK_DIR.End
+
+Program.Sub.Load.Start
+F.Intrinsic.Control.Try
+V.Local.sError.Declare
+	V.Local.iCount.Declare
+	V.Local.sDateSelect.Declare
+	
+	
+
+	
+	f.Intrinsic.UI.InvokeWaitDialog("Loading...")
+'	gui.Form.gsQual.ClearRows("GVMain")
+	
+	gui.Form..Visible(False)
+	'all datatables created here, if 1 exists they all exists
+	F.Intrinsic.Control.If(V.DataTable.QUALITY.Exists)
+		F.Data.DataTable.Close("QUALITY")
+	f.Intrinsic.Control.EndIf
+	
+	F.Intrinsic.Control.If(V.DataTable.QUALITY_DISP.Exists)
+		F.Data.DataTable.Close("QUALITY_DISP")
+	f.Intrinsic.Control.EndIf
+	
+	F.Intrinsic.Control.If(V.DataTable.QUAL_DISP.Exists)
+		F.Data.DataTable.Close("QUAL_DISP")
+	f.Intrinsic.Control.EndIf
+	
+	F.Intrinsic.Control.If(V.DataTable.NCMR.Exists)
+		F.Data.DataTable.Close("NCMR")
+	f.Intrinsic.Control.EndIf
+	
+	F.Intrinsic.Control.If(V.DataTable.JB.Exists)
+		F.Data.DataTable.Close("JB")
+	f.Intrinsic.Control.EndIf
+	
+	F.Intrinsic.Control.If(V.DataTable.QUAL_DESC.Exists)
+		F.Data.DataTable.Close("QUAL_DESC")
+	f.Intrinsic.Control.EndIf
+	
+	F.Intrinsic.Control.If(V.DataTable.Scrap_DESC.Exists)
+		F.Data.DataTable.Close("Scrap_DESC")
+	f.Intrinsic.Control.EndIf
+
+	f.Intrinsic.UI.ChangeWaitStatus("Joining tables...")
+	F.Data.DataTable.CreateFromSQL("QUALITY", "con", "Select rTrim(Scrap_Code) As Scrap_Code,Date_Quality,Employee_Dept As Department, Employee, rTrim(Employee_Name) As Employee_Name , User1 as User1H, User2 as User2H, rTrim(Description) As Description, Control_Number, Customer, Vendor, Name, Job, Suffix, Sequence,  WorkCenter, Op_Code,  Qty_Remaining, Remaining_Value, Part, if(purchase_order='0000000','',purchase_order) as purchase_order, if(po_line='0000','',po_line) as po_line From V_QUALITY Order by CONTROL_NUMBER", True)
+	'BM Adding inspect by and Inspect date 
+	'F.Data.DataTable.CreateFromSQL("QUALITY_DISP", "con", "Select Control_Number, Disposition_Seq, Qty_Disposed, Discrepancy, Date_Disposed, Disposed_Value, User1, User2, Disposition_Action,Case when Filler = 'N' then 'N' When Filler = '' Then 'Y' end as ProcessedStatus From QUALITY_DISP", True)
+	
+	'BM join Date Inspected from quality_disp view, so you don't have to mess with formatting. Remove ProcessedStatus Column. This field is not used and means nothing w process_disp button removed
+	'F.Data.DataTable.CreateFromSQL("QUALITY_DISP", "con", "Select Control_Number, Disposition_Seq, Qty_Disposed, Discrepancy, Date_Disposed, Disposed_Value, User1, User2, Disposition_Action, INSPECTED_BY, DATE_INSPECTED,Case when Filler = 'N' then 'N' When Filler = '' Then 'Y' end as ProcessedStatus From QUALITY_DISP", True)
+	F.Data.DataTable.CreateFromSQL("QUALITY_DISP", "con", "Select A.Control_Number, A.Disposition_Seq, A.Qty_Disposed, A.Discrepancy, B.Date_Disposed, A.Disposed_Value, A.INSPECTED_BY, B.DATE_INSPECTED, A.User1, A.User2, A.Disposition_Action From QUALITY_DISP A left join V_QUALITY_DISP B on A.CONTROL_NUMBER = B.CONTROL_NUMBER and A.DISPOSITION_SEQ = B.DISPOSITION_SEQ", True)
+	F.Data.DataTable.CreateFromSQL("QUAL_DISP", "con", "Select NUM, SEQ, USER3, USER4 From V_QUAL_DISP", True)
+	'BM Removing: nothing writes to it and should be grabbing from QUAL_HDR_NOTES instead 
+	'F.Data.DataTable.CreateFromSQL("JB", "con", "Select Control_Num, Comments From GAB_JB_COMMENTS", True)
+	F.Intrinsic.Control.If(V.Caller.GSSVersion, =, "2020.1")
+		F.Data.DataTable.CreateFromSQL("JB", "con", "Select CONTROL_NUMBER as CONTROL_NUM, TEXT as COMMENTS from QUAL_HDR_NOTES", True)
+	F.Intrinsic.Control.Else
+		F.Data.Datatable.CreateFromSQL("JB", "con", "Select NUMBER as CONTROL_NUM, TEXT as COMMENTS from QUAL_MSTR_NOTES", True)
+	F.Intrinsic.Control.EndIf
+	
+	F.Data.DataTable.CreateFromSQL("QUAL_DESC", "con", "Select distinct Discrep_Code, Discrep_Desc From QUALITY_DISCRP_CD  Where SYS In ( 'QUA' , 'REJ') And SUB_SYS In  ('DIS' , 'CDE') ", True)	
+	F.Data.DataTable.CreateFromSQL("Scrap_DESC", "con", "Select distinct rTrim(DISCREP_CODE) as Discrep_Code, Discrep_Desc As ScrapDesc From QUALITY_DISCRP_CD  Where SYS =  'REJ' And SUB_SYS = 'CDE' ", True)
+	
+	'BM Add in inspect by and date to show in the join 
+	'Function.Data.Linq.Join("LeftJoin", "Datatable", "QUALITY*!*QA", "Datatable","QUALITY_DISP*!*QAD", "QA.CONTROL_NUMBER = QAD.CONTROL_NUMBER" , "Datatable", "QUAL_DISP*!*QUAL","QAD.CONTROL_NUMBER = QUAL.NUM And QAD.DISPOSITION_SEQ= QUAL.SEQ" ,"Datatable","JB*!*JB", "QA.CONTROL_NUMBER=JB.CONTROL_NUM", "Datatable","QUAL_DESC*!*DES","QAD.DISCREPANCY=DES.DISCREP_CODE" ,"Datatable","Scrap_DESC*!*SDESC","QA.Scrap_Code=SDESC.DISCREP_CODE","SDESC.ScrapDesc*!*DES.Discrep_Desc*!*QA.Scrap_Code*!*JB.COMMENTS*!*QA.Date_Quality*!*QA.Department*!*QA.Employee*!*QA.Employee_Name*!*QA.User1H*!*QA.User2H*!*QA.Description*!*QA.Control_Number*!*QAD.Disposition_Seq*!*QA.Customer*!*QA.Vendor*!*QA.Name*!*QA.Job*!*QA.Suffix*!*QA.Sequence*!*QA.PURCHASE_ORDER*!*QA.PO_LINE*!*QA.WorkCenter*!*QA.Op_Code*!*QA.Qty_Remaining*!*QA.Remaining_Value*!*QAD.Qty_Disposed*!*QAD.Disposed_Value*!*QAD.Date_Disposed*!*QAD.Discrepancy*!*QA.Part*!*QAD.User1*!*QAD.User2*!*QUAL.User3*!*QUAL.User4*!*QAD.Disposition_Action*!*QAD.ProcessedStatus","", "", "", "NCMR", True)
+	Function.Data.Linq.Join("LeftJoin", "Datatable", "QUALITY*!*QA", "Datatable", "QUALITY_DISP*!*QAD", "QA.CONTROL_NUMBER = QAD.CONTROL_NUMBER", "Datatable", "QUAL_DISP*!*QUAL","QAD.CONTROL_NUMBER = QUAL.NUM And QAD.DISPOSITION_SEQ= QUAL.SEQ" ,"Datatable","JB*!*JB", "QA.CONTROL_NUMBER=JB.CONTROL_NUM", "Datatable","QUAL_DESC*!*DES","QAD.DISCREPANCY=DES.DISCREP_CODE" ,"Datatable","Scrap_DESC*!*SDESC","QA.Scrap_Code=SDESC.DISCREP_CODE","SDESC.ScrapDesc*!*DES.Discrep_Desc*!*QA.Scrap_Code*!*JB.COMMENTS*!*QA.Date_Quality*!*QA.Department*!*QA.Employee*!*QA.Employee_Name*!*QA.User1H*!*QA.User2H*!*QA.Description*!*QA.Control_Number*!*QAD.Disposition_Seq*!*QA.Customer*!*QA.Vendor*!*QA.Name*!*QA.Job*!*QA.Suffix*!*QA.Sequence*!*QA.PURCHASE_ORDER*!*QA.PO_LINE*!*QA.WorkCenter*!*QA.Op_Code*!*QA.Qty_Remaining*!*QA.Remaining_Value*!*QAD.Qty_Disposed*!*QAD.Disposed_Value*!*QAD.Inspected_By*!*QAD.Date_Inspected*!*QAD.Date_Disposed*!*QAD.Discrepancy*!*QA.Part*!*QAD.User1*!*QAD.User2*!*QUAL.User3*!*QUAL.User4*!*QAD.Disposition_Action","", "", "", "NCMR", True)
+	
+	'BM With no more process disp button, no need for this
+	'F.Data.DataTable.AddColumn("NCMR","Select", bit, 0)
+	
+	'New columns for work order project and phase
+	f.Data.DataTable.AddColumn("NCMR","Project","String")
+	f.Data.DataTable.AddColumn("NCMR","Phase","String")
+	f.Data.DataTable.CreateFromSQL("dtProjPhase","con","select job+suffix as JS, project, phase from v_job_header")
+	f.Data.Dictionary.createfromdatatable("dictProj","dtProjPhase","JS","Project")
+	f.Data.Dictionary.SetDefaultReturn("dictProj","")
+	f.Data.Dictionary.createfromdatatable("dictPhase","dtProjPhase","JS","Phase")
+	f.Data.Dictionary.SetDefaultReturn("dictPhase","")
+	f.Data.DataTable.AddExpressionColumn("NCMR","JS","String","Job+Suffix")
+	f.Data.DataTable.FillFromDictionary("NCMR","dictProj","JS","Project")
+	f.Data.DataTable.FillFromDictionary("NCMR","dictPhase","JS","Phase")
+	f.Data.Dictionary.Close("dictProj")
+	f.Data.Dictionary.Close("dictPhase")
+	
+	'New column for if the NCMR is open or closed, based on the qty remaining
+	'BM modify to actually make it based on qty remaining, rather than relying on ProessedStatus column, which just reads QUALITY_DISP.FILLER, which is not used
+	'f.Data.DataTable.AddExpressionColumn("NCMR","Processed","bit","iif(ProcessedStatus='N',False,True)")
+	F.Data.DataTable.AddExpressionColumn("NCMR","Closed","bit","iif(Qty_Remaining > 0,False, True)")
+	
+	'New column for displaying human-readable source of NCMR
+	f.Data.DataTable.AddExpressionColumn("NCMR","Source","String","iif(job<>'','WIP',iif(PURCHASE_ORDER<>'','Receiving Insp','Inventory'))")
+	
+	f.Data.DataView.Create("NCMR","NCMRdv")
+	
+	'BM Add date formating to 2 new columns. Set column property function in subroutine: formatgs_qual is not working for how these two dates are set up
+'	F.Intrinsic.Control.For(V.Local.iCount, 0, V.DataTable.NCMR.RowCount--, 1)
+'		V.Local.sDateSelect.Set(V.DataTable.NCMR(V.Local.iCount).DATE_INSPECTED!FieldVal)
+'		F.Intrinsic.Control.If(V.Local.sDateSelect, <>, "000000")
+'			F.Data.Datatable.SetValue("NCMR", V.Local.iCount, "DATE_INSPECTED", V.Local.sDateSelect.Formatm/d/YYYY)
+'		F.Intrinsic.Control.Else
+'			F.Data.Datatable.SetValue("NCMR", V.Local.iCount, "DATE_INSPECTED", "")
+'		F.Intrinsic.Control.EndIf
+'		
+''		V.Local.sDateSelect.Set(V.DataTable.NCMR(V.Local.iCount).INSPECTED_BY!FieldVal)
+''		F.Data.Datatable.SetValue("NCMR", V.Local.iCount, "INSPECTED_BY", V.Local.sDateSelect.Formatm/d/YYYY)
+'	F.Intrinsic.Control.Next(V.Local.iCount)
+'	
+	f.Intrinsic.UI.ChangeWaitStatus("Formating grid...")
+	gui.Form.gsQual.AddGridViewFromDataTable("GVMain", "NCMR")
+	f.Intrinsic.Control.CallSub("Format_gsQual")
+	gui.Form.gsQual.MainView("GVMain")
+	
+	f.Intrinsic.UI.CloseWaitDialog
+	gui.Form..Visible(True)
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}GAB Version: {5}}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	f.Intrinsic.Control.CallSub("Unload")
+F.Intrinsic.Control.EndTry
+Program.Sub.Load.End
+'BM This auto dispositions records at open... Remove this 
+'Program.Sub.Update_Disposed.Start
+'f.Intrinsic.Control.Try
+'	v.Local.sError.Declare
+'	v.Local.iCnt.Declare
+'	v.Local.sFilter.Declare
+'	v.Local.sDiscrepancy.Declare
+'	v.Local.sTimeDispose.Declare
+'	v.Local.sControlNumber.Declare
+'	v.Local.fQtyRemain.Declare
+'	v.Local.fValueRemain.Declare
+'	v.Local.sSQL.Declare	
+'	
+'	f.Intrinsic.String.Build("{0}00",v.Ambient.Now.FormatHhNnSs,v.Local.sTimeDispose)
+'	
+'	F.Intrinsic.Control.If(V.DataTable.QUALITY.Exists)
+'		F.Data.DataTable.Close("QUALITY")
+'	f.Intrinsic.Control.EndIf
+'	
+'	F.Intrinsic.Control.If(V.DataTable.QUALITY_DISP.Exists)
+'		F.Data.DataTable.Close("QUALITY_DISP")
+'	f.Intrinsic.Control.EndIf
+'	
+'	F.Intrinsic.Control.If(V.DataTable.QUAL_DISP.Exists)
+'		F.Data.DataTable.Close("QUAL_DISP")
+'	f.Intrinsic.Control.EndIf
+'	
+'	F.Intrinsic.Control.If(V.DataTable.NCMR.Exists)
+'		F.Data.DataTable.Close("NCMR")
+'	f.Intrinsic.Control.EndIf
+
+''	1/ Filter QA table all the Control_Number where Discrepancy = ? => list of Control_Number where IsNull(Reject Qty Remaining,0)  > 0
+''	2/For Each Control_Number XXX, Filter QUAD table all Control_Number where Control_Number = XXX, 
+''	if there is no row count, 
+''	insert to the 2 tables: Quality_Disp and Qual_Disp
+''	Quality_Disp: Control_Number(=XXX),Disposition_Seq(=001),Qty_Disposed(=QA.Qty_Remaining),Disposed_Value(=QA.Remaining_Value)	
+''		Discrepancy(= ?Z? + QA.Scrap_Code),Date_Disposed(=CurrentDate),Disposition_Action (=?Scrap?)	
+''	Qual_Disp: Num(=XXX),Seq(=001)
+''	Update QA table set Qty_Remaining = 0; Remaining_Value = 0
+
+'	f.Intrinsic.UI.ChangeWaitStatus("Udating...")	
+'	F.Data.DataTable.CreateFromSQL("QUALITY", "con", "Select  Control_Number, rTrim(Scrap_Code) As Scrap_Code,Qty_Remaining, Remaining_Value From V_QUALITY", True)	
+'	f.Data.DataView.Create("QUALITY","QUALITY_dv")
+'	F.Data.DataTable.CreateFromSQL("QUALITY_DISP", "con", "Select Control_Number, Disposition_Seq  From V_QUALITY_DISP", True)
+'	f.Data.DataView.Create("QUALITY_DISP","QUALITY_DISP_dv")
+'	Function.Data.Linq.Join("LeftJoin", "Datatable", "QUALITY*!*QA", "Datatable","QUALITY_DISP*!*QAD", "QA.CONTROL_NUMBER = QAD.CONTROL_NUMBER" , "QA.Control_Number*!*QAD.Disposition_Seq*!*QA.Qty_Remaining","","","", "NCMR", True)
+'	f.Data.DataView.Create("NCMR","NCMRdv",22,"IsNull(Disposition_Seq,'') = '' and IsNull(Qty_Remaining,0) > 0","")
+'	f.Data.DataView.ToDataTableDistinct("NCMR","NCMRdv","NumToUpdate","CONTROL_NUMBER",True)
+'	
+
+'	F.Data.DataTable.CreateFromSQL("QUAL_DISP", "con", "Select Num, Seq  From V_QUAL_DISP", True)
+'	f.Data.DataView.Create("QUAL_DISP","QUAL_DISP_dv")	
+
+'	f.Intrinsic.Control.If(v.DataTable.NumToUpdate.RowCount,>,0)
+'		gui.ProgressForm.proBar.Visible(True)
+'		gui.ProgressForm.proBar.Max(v.DataTable.NumToUpdate.RowCount)
+'	f.Intrinsic.Control.EndIf
+''	
+'	f.Intrinsic.Control.For(v.Local.iCnt,0,v.DataTable.NumToUpdate.RowCount--,1)
+'		gui.ProgressForm.proBar.Value(v.Local.iCnt)
+'		v.Local.sControlNumber.Set(v.DataTable.NumToUpdate(v.Local.iCnt).Control_Number!FieldValString)		
+'		f.Intrinsic.String.Build("Control_Number = '{0}'",v.Local.sControlNumber,v.Local.sFilter)
+'		f.Data.DataView.SetFilter("QUALITY_DISP","QUALITY_DISP_dv",v.Local.sFilter)	
+'		
+'		f.Intrinsic.Control.If(v.DataView.QUALITY_DISP!QUALITY_DISP_dv.RowCount,=,0)
+'			f.Data.DataView.SetFilter("QUALITY","QUALITY_dv",v.Local.sFilter)		
+'			f.Intrinsic.String.Build("Z{0}",v.DataView.QUALITY!QUALITY_dv(0).Scrap_Code!FieldValTrim,v.Local.sDiscrepancy)		
+'			v.Local.fQtyRemain.Set(v.DataView.QUALITY!QUALITY_dv(0).Qty_Remaining!FieldValString)
+'			v.Local.fValueRemain.Set(v.DataView.QUALITY!QUALITY_dv(0).Remaining_Value!FieldValString)
+'		
+'			'BM Setting default disposal action to blank as per customer 
+'			'f.Intrinsic.String.Build("Insert into Quality_Disp (Control_Number,Disposition_Seq,Qty_Disposed,Disposed_Value,Discrepancy,Disposition_Action,Date_Disposed,Time_Disposed,User_Disposed_By,New_PO_Number,New_PO_Line,Date_Inspected,CNC_Action,Date_CNC_Req,No_Good_Rpt,Filler) values('{0}','001',{1},{2},'{3}','Scrap','{4}','{5}','{6}','0000000','0000','000000','N','000000','N','N')",v.Local.sControlNumber,v.Local.fQtyRemain,v.Local.fValueRemain,v.Local.sDiscrepancy,v.Ambient.Date.FormatYYYYMMDD,v.Local.sTimeDispose,v.Caller.User,v.Local.sSQL)
+'			f.Intrinsic.String.Build("Insert into Quality_Disp (Control_Number,Disposition_Seq,Qty_Disposed,Disposed_Value,Discrepancy,Disposition_Action,Date_Disposed,Time_Disposed,User_Disposed_By,New_PO_Number,New_PO_Line,Date_Inspected,CNC_Action,Date_CNC_Req,No_Good_Rpt,Filler) values('{0}','001',{1},{2},'{3}','','{4}','{5}','{6}','0000000','0000','000000','N','000000','N','N')",v.Local.sControlNumber,v.Local.fQtyRemain,v.Local.fValueRemain,v.Local.sDiscrepancy,v.Ambient.Date.FormatYYYYMMDD,v.Local.sTimeDispose,v.Caller.User,v.Local.sSQL)
+'			f.ODBC.Connection!con.Execute(v.Local.sSQL)
+'			
+'			f.Intrinsic.String.Build("Num = '{0}' and Seq = '001'",v.Local.sControlNumber,v.Local.sFilter)
+'			f.Data.DataView.SetFilter("QUAL_DISP","QUAL_DISP_dv",v.Local.sFilter)	
+'			
+'			f.Intrinsic.Control.If(v.DataView.QUAL_DISP!QUAL_DISP_dv.RowCount,=,0)
+'				f.Intrinsic.String.Build("Insert into Qual_Disp (Num,Seq) values('{0}','001')",v.Local.sControlNumber,v.Local.sSQL)
+'				f.ODBC.Connection!con.Execute(v.Local.sSQL)
+'			f.Intrinsic.Control.EndIf
+'			
+'			f.Intrinsic.String.Build("Update QUALITY set Qty_Remaining = 0, Remaining_Value = 0 where Control_Number = '{0}'",v.Local.sControlNumber,v.Local.sSQL)
+'			f.ODBC.Connection!con.Execute(v.Local.sSQL)
+'		f.Intrinsic.Control.EndIf
+'	
+'	f.Intrinsic.Control.Next(v.Local.iCnt)
+'	gui.ProgressForm.proBar.Visible(False)
+'	
+'	f.Data.DataTable.Close("NumToUpdate")
+'	f.Intrinsic.UI.CloseWaitDialog
+'	
+'F.Intrinsic.Control.Catch
+'	F.Intrinsic.String.Build("Project: {0}{1}Subroutine: {2}{1}Subroutine called from:{6}{1}Error Occurred: {3}{1}Description: {4}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,v.Ambient.SubroutineCalledFrom,V.Local.sError)
+'	F.Intrinsic.UI.Msgbox(V.Local.sError)
+'	F.Intrinsic.Control.CallSub("Unload")	
+'F.Intrinsic.Control.EndTry
+'Program.Sub.Update_Disposed.End
+
+Program.Sub.gsQual_CellValueChanged.Start
+f.Intrinsic.Control.Try
+	v.Local.sError.Declare
+	v.Local.sColumn.Declare
+	v.Local.sHold.Declare
+	v.Local.sSQL.Declare
+	v.Local.sRet.Declare
+	
+	f.Intrinsic.String.UCase(v.Args.Column,v.Local.sColumn)
+	f.Intrinsic.Control.SelectCase(v.Local.sColumn)
+	
+		f.Intrinsic.Control.Case("USER1H")
+			f.Intrinsic.String.Left(v.DataTable.NCMR(v.Args.RowIndex).User1H!FieldValTrim,20,v.Local.sHold)
+			F.Intrinsic.String.Build("Update Quality set User1 = '{1}' where Control_Number = '{0}'",v.DataTable.NCMR(v.Args.RowIndex).Control_Number!FieldValString,v.Local.sHold.PSQLFriendly,v.Local.sSQL)
+			f.ODBC.Connection!con.Execute(v.Local.sSQL)		
+		f.Intrinsic.Control.Case("USER2H")
+			f.Intrinsic.String.Left(v.DataTable.NCMR(v.Args.RowIndex).User2H!FieldValTrim,20,v.Local.sHold)
+			F.Intrinsic.String.Build("Update Quality set User2 = '{1}' where Control_Number = '{0}'",v.DataTable.NCMR(v.Args.RowIndex).Control_Number!FieldValString,v.Local.sHold.PSQLFriendly,v.Local.sSQL)
+			f.ODBC.Connection!con.Execute(v.Local.sSQL)	
+		f.Intrinsic.Control.Case("USER1")
+			f.Intrinsic.String.Left(v.DataTable.NCMR(v.Args.RowIndex).User1!FieldValTrim,20,v.Local.sHold)
+			F.Intrinsic.String.Build("Update Quality_Disp set User1 = '{2}' where Control_Number = '{0}' and Disposition_Seq = '{1}'",v.DataTable.NCMR(v.Args.RowIndex).Control_Number!FieldValString,v.DataTable.NCMR(v.Args.RowIndex).Disposition_Seq!FieldValString,v.Local.sHold.PSQLFriendly,v.Local.sSQL)
+			f.ODBC.Connection!con.Execute(v.Local.sSQL)			
+		f.Intrinsic.Control.Case("USER2")
+			f.Intrinsic.String.Left(v.DataTable.NCMR(v.Args.RowIndex).User2!FieldValTrim,20,v.Local.sHold)
+			F.Intrinsic.String.Build("Update Quality_Disp set User2 = '{2}' where Control_Number = '{0}' and Disposition_Seq = '{1}'",v.DataTable.NCMR(v.Args.RowIndex).Control_Number!FieldValString,v.DataTable.NCMR(v.Args.RowIndex).Disposition_Seq!FieldValString,v.Local.sHold.PSQLFriendly,v.Local.sSQL)
+			f.ODBC.Connection!con.Execute(v.Local.sSQL)		
+		f.Intrinsic.Control.Case("USER3")			
+			f.Intrinsic.String.Left(v.DataTable.NCMR(v.Args.RowIndex).User3!FieldValTrim,20,v.Local.sHold)
+			F.Intrinsic.String.Build("Select Num,Seq From Qual_Disp where Num  = '{0}' and Seq = '{1}'",v.DataTable.NCMR(v.Args.RowIndex).Control_Number!FieldValString,v.DataTable.NCMR(v.Args.RowIndex).Disposition_Seq!FieldValString,v.Local.sSQL)
+			f.ODBC.connection!con.ExecuteAndReturn(v.Local.sSQL,v.Local.sRet)
+			f.Intrinsic.Control.If(v.Local.sRet,=,"")
+				f.Intrinsic.String.Build("Insert into Qual_Disp (Num,Seq,User3) values ('{0}','{1}','{2}')",v.DataTable.NCMR(v.Args.RowIndex).Control_Number!FieldValString,v.DataTable.NCMR(v.Args.RowIndex).Disposition_Seq!FieldValString,v.Local.sHold.PSQLFriendly,v.Local.sSQL)
+			f.Intrinsic.Control.Else
+				f.Intrinsic.String.Build("Update Qual_Disp set User3 = '{2}' where Num = '{0}' and Seq = '{1}'",v.DataTable.NCMR(v.Args.RowIndex).Control_Number!FieldValString,v.DataTable.NCMR(v.Args.RowIndex).Disposition_Seq!FieldValString,v.Local.sHold.PSQLFriendly,v.Local.sSQL)
+			f.Intrinsic.Control.EndIf
+			f.ODBC.Connection!con.Execute(v.Local.sSQL)
+		f.Intrinsic.Control.Case("USER4")		
+			f.Intrinsic.String.Left(v.DataTable.NCMR(v.Args.RowIndex).User4!FieldValTrim,20,v.Local.sHold)
+			F.Intrinsic.String.Build("Select Num,Seq From Qual_Disp where Num  = '{0}' and Seq = '{1}'",v.DataTable.NCMR(v.Args.RowIndex).Control_Number!FieldValString,v.DataTable.NCMR(v.Args.RowIndex).Disposition_Seq!FieldValString,v.Local.sSQL)
+			f.ODBC.connection!con.ExecuteAndReturn(v.Local.sSQL,v.Local.sRet)
+			f.Intrinsic.Control.If(v.Local.sRet,=,"")
+				f.Intrinsic.String.Build("Insert into Qual_Disp (Num,Seq,User4) values ('{0}','{1}','{2}')",v.DataTable.NCMR(v.Args.RowIndex).Control_Number!FieldValString,v.DataTable.NCMR(v.Args.RowIndex).Disposition_Seq!FieldValString,v.Local.sHold.PSQLFriendly,v.Local.sSQL)
+			f.Intrinsic.Control.Else
+				f.Intrinsic.String.Build("Update Qual_Disp set User4 = '{2}' where Num = '{0}' and Seq = '{1}'",v.DataTable.NCMR(v.Args.RowIndex).Control_Number!FieldValString,v.DataTable.NCMR(v.Args.RowIndex).Disposition_Seq!FieldValString,v.Local.sHold.PSQLFriendly,v.Local.sSQL)
+			f.Intrinsic.Control.EndIf
+			f.ODBC.Connection!con.Execute(v.Local.sSQL)
+'		f.Intrinsic.Control.Case("COMMENTS")
+			'They don't want to edit it
+'			v.Local.sHold.Set(v.DataTable.NCMR(v.Args.RowIndex).Comments!FieldValTrim)
+'			F.Intrinsic.String.Build("Select Control_Num, Comments From GAB_JB_COMMENTS where Control_Num  = '{0}'",v.DataTable.NCMR(v.Args.RowIndex).Control_Number!FieldValString,v.Local.sSQL)
+'			f.ODBC.connection!con.ExecuteAndReturn(v.Local.sSQL,v.Local.sRet)
+'			f.Intrinsic.Control.If(v.Local.sRet,=,"")
+'				f.Intrinsic.String.Build("Insert into GAB_JB_COMMENTS (Control_Num,Comments) values ('{0}','{1}')",v.DataTable.NCMR(v.Args.RowIndex).Control_Number!FieldValString,v.Local.sHold.PSQLFriendly,v.Local.sSQL)
+'			f.Intrinsic.Control.Else
+'				f.Intrinsic.String.Build("Update GAB_JB_COMMENTS set Comments = '{1}' where Control_Num = '{0}'",v.DataTable.NCMR(v.Args.RowIndex).Control_Number!FieldValString,v.Local.sHold.PSQLFriendly,v.Local.sSQL)
+'			f.Intrinsic.Control.EndIf
+'			f.ODBC.connection!con.ExecuteAndReturn(v.Local.sSQL,v.Local.sRet)
+	f.Intrinsic.Control.EndSelect
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}Subroutine: {2}{1}Subroutine called from:{6}{1}Error Occurred: {3}{1}Description: {4}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,v.Ambient.SubroutineCalledFrom,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub("Unload")	
+F.Intrinsic.Control.EndTry
+Program.Sub.gsQual_CellValueChanged.End
+
+Program.Sub.Format_gsQual.Start
+F.Intrinsic.Control.Try
+	V.Local.sError.Declare
+	V.Local.bInGroup.Declare
+	v.Local.sSQL.Declare
+	v.Local.sRet.Declare
+	v.Local.sUser1.Declare
+	v.Local.sUser2.Declare
+	v.Local.sUser3.Declare
+	v.Local.sUser4.Declare
+	v.Local.sUser1H.Declare
+	v.Local.sUser2H.Declare
+		
+	gui.Form.gsQual.SuspendLayout()
+	'General format for the grid
+	gui.Form.gsQual.SetGridViewProperty("GVMain","AllowSort",True)
+	gui.Form.gsQual.SetGridViewProperty("GVMain","AllowFilter",True)
+'	gui.Form.gsQual.SetGridViewProperty("GVMain","OptionsFindAlwaysVisible",True)
+	gui.Form.gsQual.SetGridViewProperty("GVMain","EnableAppearanceOddRow",True)
+	gui.Form.gsQual.SetGridViewProperty("GVMain","OptionsViewShowAutoFilterRow",True)
+	gui.Form.gsQual.SetGridViewProperty("GVMain","AllowColumnResizing",True)
+	gui.Form.gsQual.SetGridViewProperty("GVMain","OptionsViewColumnAutoWidth",False)	
+	gui.Form.gsQual.SetGridViewProperty("GVMain","ColumnPanelRowHeight","50")	
+	
+	'InVisible
+	'f.Intrinsic.Control.CallSub(FormatBulk,"GS","gsQual","GV","GVMain","sInputColumns","DISPOSITION_SEQ,SCRAPDESC,SCRAP_CODE,User1H,User2H,JS,ProcessedStatus","sProperty","Invisible")	
+	f.Intrinsic.Control.CallSub(FormatBulk,"GS","gsQual","GV","GVMain","sInputColumns","DISPOSITION_SEQ,SCRAPDESC,SCRAP_CODE,User1H,User2H,JS","sProperty","Invisible")
+	'VisibleIndex
+	'BM Mod to format new fields for Haskris 
+	'f.Intrinsic.Control.CallSub(FormatBulk,"GS","gsQual","GV","GVMain","sInputColumns","Processed,Select,CONTROL_NUMBER,Customer,Vendor,Name,JOB,Suffix,Sequence,Project,Phase,PURCHASE_ORDER,PO_LINE,Source,WORKCENTER,OP_CODE,Department,Date_Quality,DISPOSITION_SEQ,SCRAP_CODE,SCRAPDESC,QTY_REMAINING,REMAINING_VALUE,QTY_DISPOSED,discrepancy,DISCREP_DESC,DATE_DISPOSED,DISPOSED_VALUE,DISPOSITION_ACTION,PART,Description,User1H,User2H,USER1,USER2,USER3,USER4,COMMENTS,Employee,Employee_Name","sProperty","VisibleIndex")	
+	f.Intrinsic.Control.CallSub(FormatBulk,"GS","gsQual","GV","GVMain","sInputColumns","Closed,CONTROL_NUMBER,Customer,Vendor,Name,JOB,Suffix,Sequence,Project,Phase,PURCHASE_ORDER,PO_LINE,Source,WORKCENTER,OP_CODE,Department,Date_Quality,DISPOSITION_SEQ,SCRAP_CODE,SCRAPDESC,QTY_REMAINING,REMAINING_VALUE,QTY_DISPOSED,discrepancy,DISCREP_DESC,DATE_DISPOSED,DISPOSED_VALUE,DISPOSITION_ACTION,INSPECTED_BY,DATE_INSPECTED,PART,Description,User1H,User2H,USER1,USER2,USER3,USER4,COMMENTS,Employee,Employee_Name","sProperty","VisibleIndex")	
+	'caption
+	'BM
+'	f.Intrinsic.Control.CallSub(FormatBulk,"GS","gsQual","GV","GVMain","sInputColumns","CONTROL_NUMBER@!@NCMR,Customer@!@Customer,Vendor@!@Vendor,DISPOSITION_SEQ@!@Disp. Seq,SCRAP_CODE@!@Scap Code,SCRAPDESC@!@Scrap Description,OP_CODE@!@Op Code,QTY_REMAINING@!@Reject Qty Remaining,REMAINING_VALUE@!@Reject Value Remaining,QTY_DISPOSED@!@Disposed Quantity,DATE_DISPOSED@!@Disposed Date,discrepancy@!@Discrepancy,DISPOSITION_ACTION@!@Disposed Action,DISPOSED_VALUE@!@Disposed Value,Name@!@Customer Name,JOB@!@Job,Suffix@!@Suf.,Sequence@!@Seq.,PURCHASE_ORDER@!@PO,PO_LINE@!@PO Line,WORKCENTER@!@Work Center,DEPARTMENT@!@Dept.,DISCREP_DESC@!@Discrepancy Description,COMMENTS@!@Comments,Description@!@Part Description,Date_Quality@!@Date Entered,Employee_Name@!@Employee Name,Employee@!@Empl.,Part@!@Part,Processed@!@Processed","sProperty","Caption")
+	f.Intrinsic.Control.CallSub(FormatBulk,"GS","gsQual","GV","GVMain","sInputColumns","CONTROL_NUMBER@!@NCMR,Customer@!@Customer,Vendor@!@Vendor,DISPOSITION_SEQ@!@Disp. Seq,SCRAP_CODE@!@Scap Code,SCRAPDESC@!@Scrap Description,OP_CODE@!@Op Code,QTY_REMAINING@!@Reject Qty Remaining,REMAINING_VALUE@!@Reject Value Remaining,QTY_DISPOSED@!@Disposed Quantity,DATE_DISPOSED@!@Disposed Date,discrepancy@!@Discrepancy,DISPOSITION_ACTION@!@Disposed Action,INSPECTED_BY@!@Inspect By,DATE_INSPECTED@!@Inspect Date,DISPOSED_VALUE@!@Disposed Value,Name@!@Customer Name,JOB@!@Job,Suffix@!@Suf.,Sequence@!@Seq.,PURCHASE_ORDER@!@PO,PO_LINE@!@PO Line,WORKCENTER@!@Work Center,DEPARTMENT@!@Dept.,DISCREP_DESC@!@Discrepancy Description,User1H@!@Customer NCMR,COMMENTS@!@Notes,Description@!@Part Description,Date_Quality@!@Date Entered,Employee_Name@!@Employee Name,Employee@!@Empl.,Part@!@Part,Closed@!@Closed","sProperty","Caption")
+'	f.Intrinsic.Control.CallSub(FormatBulk,"GS","gsQual","GV","GVMain","sInputColumns","CONTROL_NUMBER@!@NCMR,Customer@!@Customer,Vendor@!@Vendor,DISPOSITION_SEQ@!@Disp. Seq,SCRAP_CODE@!@Scap Code,SCRAPDESC@!@Scrap Description,OP_CODE@!@Op Code,QTY_REMAINING@!@Reject Qty Remaining,REMAINING_VALUE@!@Reject Value Remaining,QTY_DISPOSED@!@Disposed Quantity,DATE_DISPOSED@!@Disposed Date,discrepancy@!@Discrepancy,DISPOSITION_ACTION@!@Disposed Action,DISPOSED_VALUE@!@Disposed Value,Name@!@Customer Name,JOB@!@Job,Suffix@!@Suf.,Sequence@!@Seq.,PURCHASE_ORDER@!@PO,PO_LINE@!@PO Line,WORKCENTER@!@Work Center,USER1@!@User 1,USER2@!@User 2,USER3@!@Quality Risk,USER4@!@User 4,DEPARTMENT@!@Dept.,DISCREP_DESC@!@Discrepancy Description,COMMENTS@!@Comments,Description@!@Part Description,Date_Quality@!@Date Entered,Employee_Name@!@Employee Name,User1H@!@User1H,User2H@!@User2H,Employee@!@Empl.,Part@!@Part,Processed@!@Processed","sProperty","Caption")
+	'Set captions for User 3 and 4 from company options
+	f.Global.General.ReadOption("401790",1,"User1",v.Local.sUser1)
+	f.Global.General.ReadOption("401791",1,"User2",v.Local.sUser2)
+	f.Global.General.ReadOption("400138",1,"User3",v.Local.sUser3)
+	f.Global.General.ReadOption("400139",1,"User4",v.Local.sUser4)
+	f.Global.General.ReadOption("401788",1,"User1H",v.Local.sUser1H)
+	f.Global.General.ReadOption("401789",1,"User2H",v.Local.sUser2H)
+	gui.Form.gsQual.SetColumnProperty("GVMain","User1","Caption",v.Local.sUser1)
+	gui.Form.gsQual.SetColumnProperty("GVMain","User2","Caption",v.Local.sUser2)
+	gui.Form.gsQual.SetColumnProperty("GVMain","User3","Caption",v.Local.sUser3)
+	gui.Form.gsQual.SetColumnProperty("GVMain","User4","Caption",v.Local.sUser4)
+	gui.Form.gsQual.SetColumnProperty("GVMain","User1H","Caption",v.Local.sUser1H)
+	gui.Form.gsQual.SetColumnProperty("GVMain","User2H","Caption",v.Local.sUser2H)
+	'HeaderBold
+	'f.Intrinsic.Control.CallSub(FormatBulk,"GS","gsQual","GV","GVMain","sInputColumns","Processed,Select,CONTROL_NUMBER,Customer,Vendor,Name,JOB,Suffix,Sequence,Project,Phase,WORKCENTER,OP_CODE,Department,Date_Quality,DISPOSITION_SEQ,SCRAP_CODE,SCRAPDESC,QTY_REMAINING,REMAINING_VALUE,QTY_DISPOSED,DISPOSED_VALUE,discrepancy,DISCREP_DESC,DATE_DISPOSED,DISPOSITION_ACTION,PART,Description,User1H,User2H,USER1,USER2,USER3,USER4,COMMENTS,Employee,Employee_Name,PURCHASE_ORDER,PO_LINE,Source","sProperty","HeaderFontBold")
+	f.Intrinsic.Control.CallSub(FormatBulk,"GS","gsQual","GV","GVMain","sInputColumns","Closed,CONTROL_NUMBER,Customer,Vendor,Name,JOB,Suffix,Sequence,Project,Phase,WORKCENTER,OP_CODE,Department,Date_Quality,DISPOSITION_SEQ,SCRAP_CODE,SCRAPDESC,QTY_REMAINING,REMAINING_VALUE,QTY_DISPOSED,DISPOSED_VALUE,discrepancy,DISCREP_DESC,DATE_DISPOSED,DISPOSITION_ACTION,INSPECTED_BY,DATE_INSPECTED,PART,Description,User1H,User2H,USER1,USER2,USER3,USER4,COMMENTS,Employee,Employee_Name,PURCHASE_ORDER,PO_LINE,Source","sProperty","HeaderFontBold")
+	'HeaderWordWrap
+	'f.Intrinsic.Control.CallSub(FormatBulk,"GS","gsQual","GV","GVMain","sInputColumns","Select,CONTROL_NUMBER,Customer,Vendor,Name,JOB,Suffix,Sequence,WORKCENTER,OP_CODE,Department,Date_Quality,DISPOSITION_SEQ,SCRAP_CODE,SCRAPDESC,QTY_REMAINING,REMAINING_VALUE,QTY_DISPOSED,discrepancy,DISCREP_DESC,DATE_DISPOSED,DISPOSED_VALUE,DISPOSITION_ACTION,PART,Description,User1H,User2H,USER1,USER2,USER3,USER4,COMMENTS,Employee,Employee_Name,PURCHASE_ORDER,PO_LINE,Source","sProperty","HeaderWordWrap")
+	f.Intrinsic.Control.CallSub(FormatBulk,"GS","gsQual","GV","GVMain","sInputColumns","CONTROL_NUMBER,Customer,Vendor,Name,JOB,Suffix,Sequence,WORKCENTER,OP_CODE,Department,Date_Quality,DISPOSITION_SEQ,SCRAP_CODE,SCRAPDESC,QTY_REMAINING,REMAINING_VALUE,QTY_DISPOSED,discrepancy,DISCREP_DESC,DATE_DISPOSED,DISPOSED_VALUE,DISPOSITION_ACTION,INSPECTED_BY,DATE_INSPECTED,PART,Description,User1H,User2H,USER1,USER2,USER3,USER4,COMMENTS,Employee,Employee_Name,PURCHASE_ORDER,PO_LINE,Source","sProperty","HeaderWordWrap")
+	'HeaderAllign_Top
+	'f.Intrinsic.Control.CallSub(FormatBulk,"GS","gsQual","GV","GVMain","sInputColumns","Processed,Select,CONTROL_NUMBER,Customer,Vendor,Name,JOB,Suffix,Sequence,Project,Phase,WORKCENTER,OP_CODE,Department,Date_Quality,DISPOSITION_SEQ,SCRAP_CODE,SCRAPDESC,QTY_REMAINING,REMAINING_VALUE,QTY_DISPOSED,discrepancy,DISCREP_DESC,DATE_DISPOSED,DISPOSED_VALUE,DISPOSITION_ACTION,PART,Description,User1H,User2H,USER1,USER2,USER3,USER4,COMMENTS,Employee,Employee_Name,PURCHASE_ORDER,PO_LINE,Source","sProperty","HeaderAllign_Top")
+	f.Intrinsic.Control.CallSub(FormatBulk,"GS","gsQual","GV","GVMain","sInputColumns","Closed,CONTROL_NUMBER,Customer,Vendor,Name,JOB,Suffix,Sequence,Project,Phase,WORKCENTER,OP_CODE,Department,Date_Quality,DISPOSITION_SEQ,SCRAP_CODE,SCRAPDESC,QTY_REMAINING,REMAINING_VALUE,QTY_DISPOSED,discrepancy,DISCREP_DESC,DATE_DISPOSED,DISPOSED_VALUE,DISPOSITION_ACTION,INSPECTED_BY,DATE_INSPECTED,PART,Description,User1H,User2H,USER1,USER2,USER3,USER4,COMMENTS,Employee,Employee_Name,PURCHASE_ORDER,PO_LINE,Source","sProperty","HeaderAllign_Top")
+	'FixedColumn_Left
+'	f.Intrinsic.Control.CallSub(FormatBulk,"GS","gsQual","GV","GVMain","sInputColumns","Processed,Select,CONTROL_NUMBER,Customer,Name,JOB,Suffix,Sequence,WORKCENTER,OP_CODE,Department,Date_Quality,DISPOSITION_SEQ,SCRAP_CODE","sProperty","FixedColumn_Left")
+	'set for hyperlink
+	gui.Form.gsQual.SetColumnProperty("GVMain", "PART", "AllowEdit",False)
+	gui.Form.gsQual.SetColumnProperty("GVMain", "PART", "ReadOnly", False)
+	gui.Form.gsQual.SetColumnProperty("GVMain", "CONTROL_NUMBER", "AllowEdit",False)
+	gui.Form.gsQual.SetColumnProperty("GVMain", "CONTROL_NUMBER", "ReadOnly", False)
+	'hyperlink color
+	gui.Form.gsQual.SetColumnProperty("GVMain", "CONTROL_NUMBER", "CellForeColor","Blue")
+	gui.Form.gsQual.SetColumnProperty("GVMain", "PART", "CellForeColor","Blue")	
+	'width
+	'gui.Form.gsQual.BestFitColumns("GVMain")
+	gui.Form.gsQual.SetColumnProperty("GVMain", "REMAINING_VALUE", "Width","50")
+	f.Intrinsic.Control.CallSub(FormatBulk,"GS","gsQual","GV","GVMain","sInputColumns","Sequence,DISPOSITION_SEQ","sProperty","Width","sWidth","35")
+	f.Intrinsic.Control.CallSub(FormatBulk,"GS","gsQual","GV","GVMain","sInputColumns","Employee,Job,Suffix,Sequence,Project,Phase,WorkCenter,Op_Code,Department,Scrap_Code","sProperty","Width","sWidth","50")
+	f.Intrinsic.Control.CallSub(FormatBulk,"GS","gsQual","GV","GVMain","sInputColumns","Closed","sProperty","Width","sWidth","60")
+	f.Intrinsic.Control.CallSub(FormatBulk,"GS","gsQual","GV","GVMain","sInputColumns","Date_Quality,DATE_DISPOSED,QTY_REMAINING,REMAINING_VALUE,QTY_DISPOSED,DISPOSED_VALUE,DISPOSITION_ACTION","sProperty","Width","sWidth","80")
+	
+	f.Intrinsic.Control.CallSub(FormatBulk,"GS","gsQual","GV","GVMain","sInputColumns","Part,Source,INSPECTED_BY,DATE_INSPECTED","sProperty","Width","sWidth","120")
+	f.Intrinsic.Control.CallSub(FormatBulk,"GS","gsQual","GV","GVMain","sInputColumns","Name,Description,DISCREP_DESC,ScrapDesc","sProperty","Width","sWidth","180")
+	'date format
+	gui.Form.gsQual.SetColumnProperty("GVMain", "DATE_DISPOSED", "DisplayCustomDatetime", "d")
+	gui.Form.gsQual.SetColumnProperty("GVMain", "Date_Quality", "DisplayCustomDatetime", "d")
+	'BM Doesn't work, just joined table to view to have the date formatted from there  
+	Gui.Form.gsQual.SetColumnProperty("GVMain", "DATE_INSPECTED", "DisplayCustomDatetime", "d")
+	
+	'DisplayCustomNumeric
+	f.Intrinsic.Control.CallSub(FormatBulk,"GS","gsQual","GV","GVMain","sInputColumns","QTY_REMAINING,REMAINING_VALUE,QTY_DISPOSED,DISPOSED_VALUE","sProperty","Decimal_1")
+	'SummaryItem
+	f.Intrinsic.Control.CallSub(FormatBulk,"GS","gsQual","GV","GVMain","sInputColumns","QTY_REMAINING,REMAINING_VALUE,QTY_DISPOSED,DISPOSED_VALUE","sProperty","SummaryItem")
+	'For_CellValue_Changed
+	f.Intrinsic.Control.CallSub(FormatBulk,"GS","gsQual","GV","GVMain","sInputColumns","User1H,User2H,User1,User2,User3,User4","sProperty","For_CellValue_Changed")
+	'BM Format so all editable columns are highlighted in yellow 
+	F.Intrinsic.Control.CallSub(FormatBulk, "GS", "gsQual", "GV", "GVMain", "sInputColumns", "User1H,User2H,User1,User2,User3,User4", "sProperty", "CellBackColor")
+	'Build dropdownlist for user3 and user4
+	f.ODBC.Connection!con.ExecuteAndReturn("Select Distinct Name from Qual_Disp_U3 order by Name",v.Local.sREt)
+	f.Intrinsic.Control.if(v.Local.sRet,<>,"")
+		f.Intrinsic.String.Replace(v.Local.sRet,"#$#","*!*",v.Local.sRet)
+		Gui.Form.gsQual.ColumnEdit("GVMain","User3","DropdownList",v.Local.sRet)
+	f.Intrinsic.Control.EndIf
+	f.ODBC.Connection!con.ExecuteAndReturn("Select Distinct Name from Qual_Disp_U4 order by Name",v.Local.sREt)
+	f.Intrinsic.Control.if(v.Local.sRet,<>,"")
+		f.Intrinsic.String.Replace(v.Local.sRet,"#$#","*!*",v.Local.sRet)
+		Gui.Form.gsQual.ColumnEdit("GVMain","User4","DropdownList",v.Local.sRet)
+	f.Intrinsic.Control.EndIf
+	
+	'check user group, later functionality
+	''Function.Global.Security.IsInGroup(V.Caller.User, "NCMR", V.Local.bInGroup) 
+	''F.Intrinsic.Control.If(V.Local.bInGroup, = , False)
+	''	gui.Form.gsQual.SetGridViewProperty("GVMain", "ReadOnly", "True") 
+	''	gui.Form.gsQual.SetGridViewProperty("GVMain", "Editable", "False") 
+	''F.Intrinsic.Control.EndIf
+	gui.Form.gsQual.ResumeLayout()
+
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}GAB Version: {5}}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	f.Intrinsic.Control.CallSub("Unload")
+F.Intrinsic.Control.EndTry
+Program.Sub.Format_gsQual.End
+
+Program.Sub.FormatBulk.Start
+f.Intrinsic.Control.Try
+	V.Local..BulkDeclareString(sError,sColumns,sHold)
+	v.Local..BulkDeclareLong(iCnt)
+
+	f.Intrinsic.String.Split(v.Args.sInputColumns,",",v.Local.sColumns)
+	f.Intrinsic.Control.For(v.Local.iCnt,0,v.Local.sColumns.UBound,1)
+		F.Intrinsic.Control.SelectCase(v.Args.sProperty)
+			F.Intrinsic.Control.Case("MinWidth")
+				gui.Form.[v.Args.GS].SetColumnProperty(v.Args.GV,v.Local.sColumns(v.Local.iCnt),"MinWidth",v.Args.sWidth)
+			F.Intrinsic.Control.Case("MaxWidth")
+				gui.Form.[v.Args.GS].SetColumnProperty(v.Args.GV,v.Local.sColumns(v.Local.iCnt),"MaxWidth",v.Args.sWidth)
+			F.Intrinsic.Control.Case("Width")
+				gui.Form.[v.Args.GS].SetColumnProperty(v.Args.GV,v.Local.sColumns(v.Local.iCnt),"Width",v.Args.sWidth)
+			F.Intrinsic.Control.Case("Invisible")
+				gui.Form.[v.Args.GS].SetColumnProperty(v.Args.GV,v.Local.sColumns(v.Local.iCnt),"Visible",False)
+			F.Intrinsic.Control.Case("VisibleIndex")
+				gui.Form.[v.Args.GS].SetColumnProperty(v.Args.GV,v.Local.sColumns(v.Local.iCnt),"VisibleIndex",v.Local.iCnt)
+			F.Intrinsic.Control.Case("Caption")
+				f.Intrinsic.String.Split(v.Local.sColumns(v.Local.iCnt),"@!@",v.Local.sHold)
+				gui.Form.[v.Args.GS].SetColumnProperty(v.Args.GV,v.Local.sHold(0),"Caption",v.Local.sHold(1))
+			F.Intrinsic.Control.Case("HeaderAllign_Far")
+				gui.Form.[v.Args.GS].SetColumnProperty(v.Args.GV,v.Local.sColumns(v.Local.iCnt),"HeaderHAlignment","Far")
+			F.Intrinsic.Control.Case("HeaderAllign_Center")
+				gui.Form.[v.Args.GS].SetColumnProperty(v.Args.GV,v.Local.sColumns(v.Local.iCnt),"HeaderHAlignment","Center")
+			F.Intrinsic.Control.Case("HeaderAllign_Top")
+				gui.Form.[v.Args.GS].SetColumnProperty(v.Args.GV,v.Local.sColumns(v.Local.iCnt),"HeaderVAlignment","Top")
+			F.Intrinsic.Control.Case("HeaderFontBold")	
+				gui.Form.[v.Args.GS].SetColumnProperty(v.Args.GV,v.Local.sColumns(v.Local.iCnt),"HeaderFontBold",True)
+			F.Intrinsic.Control.Case("HeaderWordWrap")	
+				gui.Form.[v.Args.GS].SetColumnProperty(v.Args.GV,v.Local.sColumns(v.Local.iCnt),"HeaderWordWrap","Wrap")
+			F.Intrinsic.Control.Case("CellHAlignment_Center")	
+				gui.Form.[v.Args.GS].SetColumnProperty(v.Args.GV,v.Local.sColumns(v.Local.iCnt),"CellHAlignment","Center")
+			F.Intrinsic.Control.Case("CellHAlignment_Far")	
+				gui.Form.[v.Args.GS].SetColumnProperty(v.Args.GV,v.Local.sColumns(v.Local.iCnt),"CellHAlignment","Far")
+			F.Intrinsic.Control.Case("Decimal_1")	
+				gui.Form.[v.Args.GS].SetColumnProperty(v.Args.GV,v.Local.sColumns(v.Local.iCnt),"DisplayCustomNumeric","###,###,###,##0.00")
+			f.Intrinsic.Control.Case("For_CellValue_Changed")
+				gui.Form.[v.Args.GS].SetColumnProperty(v.Args.GV,v.Local.sColumns(v.Local.iCnt),"AllowEdit",True)	
+				gui.Form.[v.Args.GS].SetColumnProperty(v.Args.GV,v.Local.sColumns(v.Local.iCnt),"ReadOnly",False)
+			f.Intrinsic.Control.Case("For_RowCell_Click")
+				gui.Form.[v.Args.GS].SetColumnProperty(v.Args.GV,v.Local.sColumns(v.Local.iCnt),"AllowEdit",False)	
+				gui.Form.[v.Args.GS].SetColumnProperty(v.Args.GV,v.Local.sColumns(v.Local.iCnt),"ReadOnly",True)
+			f.Intrinsic.Control.Case("DisplayCustomDatetime")
+				gui.Form.[v.Args.GS].SetColumnProperty(v.Args.GV,v.Local.sColumns(v.Local.iCnt),"DisplayCustomDatetime","d")	
+			f.Intrinsic.Control.Case("SummaryItem")
+				f.Intrinsic.String.Build("Sum_{0}",v.Local.sColumns(v.Local.iCnt),v.Local.sHold)
+				gui.Form.[v.Args.GS].AddSummaryItem(v.Args.GV,v.Local.sColumns(v.Local.iCnt),v.Local.sHold,"Sum","","","n")
+			f.Intrinsic.Control.Case("FixedColumn_Left")
+				gui.Form.[v.Args.GS].SetColumnProperty(v.Args.GV,v.Local.sColumns(v.Local.iCnt),"Fixed","Left")	
+			F.Intrinsic.Control.Case("CellBackColor")
+				Gui.Form.[V.Args.GS].SetColumnProperty(V.Args.GV, V.Local.sColumns(V.Local.iCnt), "CellBackColor", V.Color.SEC-GSS-04)
+			F.Intrinsic.Control.EndSelect		
+	f.Intrinsic.Control.Next(v.Local.iCnt)
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}Subroutine: {2}{1}Subroutine called from:{6}{1}Error Occurred: {3}{1}Description: {4}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,v.Ambient.SubroutineCalledFrom,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	f.Intrinsic.Control.CallSub("Unload")
+F.Intrinsic.Control.EndTry
+
+Program.Sub.FormatBulk.End
+
+Program.Sub.Refresh.Start
+F.Intrinsic.Control.Try
+V.Local.sError.Declare
+
+	F.Intrinsic.Control.CallSub(Load)
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}GAB Version: {5}}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	f.Intrinsic.Control.CallSub("Unload")
+F.Intrinsic.Control.EndTry
+Program.Sub.Refresh.End
+
+Program.Sub.Export.Start
+F.Intrinsic.Control.Try	
+	V.Local.sError.Declare	
+ 	V.Local.sFileExport.Declare
+    V.Local.bExcel.Declare
+    V.Local.bFileLocked.Declare
+    V.Local.sMsg.Declare
+
+    F.Automation.MSExcel.CheckPresence(V.Local.bExcel)
+
+    F.Intrinsic.Control.If(V.Local.bExcel)
+        F.Intrinsic.String.Build("{0}\GCG_5437_Quality_{1}.xlsx",V.Caller.LocalGssTempDir,v.Ambient.Now.FormatMMDDYYYYHhNnSs,V.Local.sFileExport)
+        F.Intrinsic.File.IsFileLocked(V.Local.sFileExport,V.Local.bFileLocked)
+        F.Intrinsic.Control.If(V.Local.bFileLocked)
+            F.Intrinsic.String.Build("File is already open. Please close and export again.{0}File: {1}",V.Ambient.NewLine,V.Local.sFileExport,V.Local.sMsg)
+            F.Intrinsic.UI.Msgbox(V.Local.sMsg,"File In Use")
+        F.Intrinsic.Control.Else
+            gui.Form.gsQual.Export(V.Local.sFileExport,"xlsx")
+            F.Intrinsic.Task.ShellExec(0,"",V.Local.sFileExport,"","",1)
+        F.Intrinsic.Control.EndIf
+    F.Intrinsic.Control.Else
+        F.Intrinsic.String.Build("{0}\GCG_5437_Quality_{1}.xlsx",V.Caller.LocalGssTempDir,v.Ambient.Now.FormatMMDDYYHhNnSs,V.Local.sFileExport)
+        F.Intrinsic.File.IsFileLocked(V.Local.sFileExport,V.Local.bFileLocked)
+        F.Intrinsic.Control.If(V.Local.bFileLocked)
+            F.Intrinsic.String.Build("File is already open. Please close and export again.{0}File: {1}",V.Ambient.NewLine,V.Local.sFileExport,V.Local.sMsg)
+            F.Intrinsic.UI.Msgbox(V.Local.sMsg,"File In Use")
+        F.Intrinsic.Control.Else
+            gui.Form.gsQual.Export(V.Local.sFileExport,"csv")
+        F.Intrinsic.Control.EndIf
+        F.Intrinsic.Task.ShellExec(0,"",V.Local.sFileExport,"","",1)
+    F.Intrinsic.Control.EndIf	
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}GAB Version: {5}}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	f.Intrinsic.Control.CallSub("Unload")
+F.Intrinsic.Control.EndTry
+Program.Sub.Export.End
+
+Program.Sub.Hyperlinks.Start
+F.Intrinsic.Control.Try
+V.Local.sError.Declare
+
+V.Local.sTemp.Declare
+'hyperlinks
+F.Intrinsic.Control.If(Variable.Args.Column, =, "CONTROL_NUMBER")
+	'magic number 2001 Quality>File>Quality Reject/Disposition Open
+	F.Intrinsic.String.Build("{0}!*!{1}", V.Caller.CompanyCode,Variable.Args.CellValue,V.Local.sTemp)
+	Function.Global.General.CallWrapperSync("2001", V.Local.sTemp)
+F.Intrinsic.Control.ElseIf(Variable.Args.Column, =, "PART")	
+	'magic number 3500 opens the inventory master
+	F.Intrinsic.String.Build("{0}!*!O!*!*!*ZDR*!*!*!*!*ZDR*!*!*!{1}!*!{2}", V.Caller.CompanyCode,Variable.Args.CellValue, "  ", V.Local.sTemp)
+	Function.Global.General.CallWrapperSync("3500", V.Local.sTemp)
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}GAB Version: {5}}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	f.Intrinsic.Control.CallSub("Unload")
+F.Intrinsic.Control.EndTry
+Program.Sub.Hyperlinks.End
+
+Program.Sub.Form_UnLoad.Start
+'Serialize before closing all
+f.Intrinsic.Control.CallSub(Serialize)	
+f.Intrinsic.Control.CallSub("Unload")
+Program.Sub.Form_UnLoad.End
+
+Program.Sub.Serialize.Start
+'BN, 09 Feb 2019, add Serialize/Deserialize feature
+f.Intrinsic.Control.Try
+	V.Local.sError.Declare	
+	V.Local.sSerialize.Declare
+	v.Local.sSQL.Declare	
+	v.Local.sUserID.Declare
+	
+	F.Global.Security.GetUserID(v.Caller.User,v.Caller.CompanyCode,v.Local.sUserID)
+	
+	'Delete old registry records
+	F.ODBC.Connection!common.OpenConnection(V.Ambient.Ccon,V.Ambient.Cuser,V.Ambient.Cpass)		
+	f.Intrinsic.String.Build("Delete From Gs_Registry Where User_ID = '{0}' and Company = '{1}' and Reg_ID = 5437 and Seq = '1001';",v.Local.sUserID,v.Caller.CompanyCode,v.Local.sSQL)
+	F.ODBC.Connection!common.Execute(v.Local.sSQL)
+	F.ODBC.Connection!common.Close
+	'GVMain
+	Gui.Form.gsQual.Serialize("GVMain",V.Local.sSerialize)
+	F.Global.Registry.AddValue(V.Caller.User,V.Caller.CompanyCode,"GVMain",5437,1001,False,"Serialize",False,0,-999.0,1/1/1980,12:00:00 AM,V.Local.sSerialize)
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}GAB Version: {5}}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	f.Intrinsic.Control.CallSub("Unload")
+F.Intrinsic.Control.EndTry
+Program.Sub.Serialize.End
+
+Program.Sub.Deserialize.Start
+'BN, 09 Feb 2019, add Serialize/Deserialize feature
+f.Intrinsic.Control.Try
+	V.Local.sError.Declare
+	V.Local.sSerialize.Declare	
+	
+	'gvAllShip
+	F.Global.Registry.ReadValue(V.Caller.User,V.Caller.CompanyCode,"GVMain",5437,1001,6,"",V.Local.sSerialize)
+	F.Intrinsic.Control.If(V.Local.sSerialize.Trim,<>,"")
+		Gui.Form.gsQual.Deserialize(V.Local.sSerialize)
+	F.Intrinsic.Control.EndIf	
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}GAB Version: {5}}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	f.Intrinsic.Control.CallSub("Unload")
+F.Intrinsic.Control.EndTry
+Program.Sub.Deserialize.End
+
+Program.Sub.UnLoad.Start
+f.Intrinsic.Control.Try
+	v.Local.sError.Declare
+
+'	F.Intrinsic.Control.If(V.ODBC.con.State,=,1)
+'		F.ODBC.Connection!con.close
+'	F.Intrinsic.Control.EndIf
+	F.Intrinsic.Control.If(V.Global.bConOpen)
+		F.ODBC.Connection!con.Close
+		V.Global.bConOpen.Set(False)
+	F.Intrinsic.Control.EndIf
+	f.Intrinsic.Control.End
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}Subroutine: {2}{1}Subroutine called from:{6}{1}Error Occurred: {3}{1}Description: {4}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,v.Ambient.SubroutineCalledFrom,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End	
+F.Intrinsic.Control.EndTry
+Program.Sub.UnLoad.End
+
+'Program.Sub.cmdProcess_Click.Start
+'f.Intrinsic.Control.Try
+'	V.Local.sError.Declare
+'	v.Local.icnt.Declare
+'	v.Local.sSQL.Declare
+'		
+'	f.Data.DataView.SetFilter("NCMR","NCMRdv","Processed = '' and Select = 1")
+'	f.Intrinsic.Control.If(v.DataView.NCMR!NCMRdv.RowCount,>,0)
+'		gui.Form.proBar.Visible(True)
+'		gui.Form.proBar.Max(v.DataView.NCMR!NCMRdv.RowCount)
+'	f.Intrinsic.Control.EndIf
+'	f.Intrinsic.Control.For(v.Local.icnt,0,v.DataView.NCMR!NCMRdv.RowCount--,1)
+'		gui.Form.proBar.Value(v.Local.icnt)
+'		f.Intrinsic.String.Build("Update Quality_Disp set Filler = '' where Control_Number = '{0}' and Disposition_Seq = '{1}'",v.DataView.NCMR!NCMRdv(v.Local.icnt).Control_Number!FieldValString,v.DataView.NCMR!NCMRdv(v.Local.icnt).Disposition_Seq!FieldValString,v.Local.sSQL)
+'		f.ODBC.Connection!con.Execute(v.Local.sSQL)
+'	f.Intrinsic.Control.Next(v.Local.icnt)
+'	gui.Form.proBar.Visible(False)
+'	f.Intrinsic.Control.If(v.DataView.NCMR!NCMRdv.RowCount,>,0)
+'		f.Intrinsic.Control.CallSub("Serialize")
+'		f.Intrinsic.Control.CallSub("Load")
+'		f.Intrinsic.Control.CallSub("Deserialize")
+'	f.Intrinsic.Control.EndIf
+'	
+'	
+'F.Intrinsic.Control.Catch
+'	F.Intrinsic.String.Build("Project: {0}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}GAB Version: {5}}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+'	F.Intrinsic.UI.Msgbox(V.Local.sError)
+'	f.Intrinsic.Control.CallSub("Unload")
+'F.Intrinsic.Control.EndTry
+'Program.Sub.cmdProcess_Click.End
+Program.Sub.ProgressForm_UnLoad.Start
+gui.ProgressForm..Visible(False)
+Program.Sub.ProgressForm_UnLoad.End
+
+Program.Sub.Comments.Start
+${$5$}$2.0.0.0$}$2
+${$6$}$bmedina$}$20221027152556015$}$kOipCrsyLBVj2KoSwkcdK23ChxGVcBlEyRHH04QL22MIn0BxQ1fwoda7BKAiohS8wa2cQrFhiB0=
+Program.Sub.Comments.End
